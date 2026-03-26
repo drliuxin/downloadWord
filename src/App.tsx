@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { 
   FileText, 
   Wand2, 
@@ -9,11 +9,13 @@ import {
   Check, 
   Type, 
   Layout, 
-  Sparkles 
+  Sparkles,
+  Upload,
+  FileDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { generateContent, formatContent } from "./services/gemini";
-import { exportToWord } from "./services/wordExport";
+import { exportToWord, createSampleTemplate } from "./services/wordExport";
 
 const SAMPLE_CONTENT = `
 # Project Proposal: AI-Powered Document Workflow
@@ -46,6 +48,8 @@ export default function App() {
   const [isFormatting, setIsFormatting] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "format">("content");
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -73,13 +77,19 @@ export default function App() {
   };
 
   const handleExport = async () => {
-    await exportToWord(content, "WordFlow_Document");
+    await exportToWord(content, "WordFlow_Document", templateFile || undefined);
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setTemplateFile(e.target.files[0]);
+    }
   };
 
   return (
@@ -101,7 +111,7 @@ export default function App() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-md active:scale-95"
           >
             <Download className="w-4 h-4" />
-            Export to Word
+            {templateFile ? 'Export with Template' : 'Export to Word'}
           </button>
         </div>
       </header>
@@ -152,16 +162,60 @@ export default function App() {
             </div>
           </div>
 
+          {/* Template Section */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4 text-gray-900">
+              <Upload className="w-5 h-5 text-blue-600" />
+              <h2 className="font-semibold">Word Template</h2>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Upload a .docx file with placeholders like <code className="bg-gray-100 px-1 rounded">{"{title}"}</code> and <code className="bg-gray-100 px-1 rounded">{"{content}"}</code>.
+            </p>
+            
+            <div className="space-y-3">
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".docx"
+                className="hidden"
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed transition-all ${templateFile ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-300 text-gray-500'}`}
+              >
+                {templateFile ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    {templateFile.name}
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload Template
+                  </>
+                )}
+              </button>
+
+              <button 
+                onClick={() => createSampleTemplate()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 text-sm font-medium transition-all"
+              >
+                <FileDown className="w-4 h-4" />
+                Download Sample Template
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4 text-gray-900">
               <Settings className="w-5 h-5 text-blue-600" />
-              <h2 className="font-semibold">Formatting Template</h2>
+              <h2 className="font-semibold">Formatting Instructions</h2>
             </div>
-            <p className="text-xs text-gray-500 mb-3">Provide instructions for how the AI should structure your document.</p>
             <textarea 
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full h-48 bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none font-mono"
+              className="w-full h-32 bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none font-mono"
               placeholder="Enter formatting instructions..."
             />
           </div>
