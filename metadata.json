@@ -1,0 +1,5 @@
+{
+  "name": "WordFlow AI",
+  "description": "Generate, format, and export content to Microsoft Word documents using AI.",
+  "requestFramePermissions": []
+}
